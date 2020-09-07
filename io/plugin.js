@@ -799,6 +799,7 @@ function nuxtSocket(ioOpts) {
     apiIgnoreEvts = [],
     serverAPI,
     clientAPI,
+    socketStream,
     vuex,
     namespaceCfg,
     ...connectOpts
@@ -993,7 +994,18 @@ function nuxtSocket(ioOpts) {
     })
   }
   _pOptions.set({ sockets })
-  return socket
+
+  if (socketStream 
+   && typeof socketStream === 'string'
+   && socketStream.startsWith('~~')) {
+    const ss = require('socket.io-stream')
+    const stream = ss.createStream()
+    const streamSocket = ss(socket)
+    streamSocket.emit(socketStream, stream)
+    return { stream, socket, streamSocket }
+  } else {
+    return socket
+  }
 }
 
 export default function(context, inject) {

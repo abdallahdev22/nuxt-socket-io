@@ -1,13 +1,11 @@
 <template>
   <div>
     Ready to receive image!
-    <img :src="imageData" />
+    <img id="image" :src="imageData" />
   </div>
 </template>
 
 <script>
-import ss from 'socket.io-stream'
-
 export default {
   data() {
     return {
@@ -15,11 +13,15 @@ export default {
     }
   },
   mounted() {
-    const stream = ss.createStream()
     const filename = 'profile.jpg'
     let imageBytes = new Uint8Array()
-    this.socket = this.$nuxtSocket({ channel: '/stream' })
-    ss(this.socket).emit('sample-image', stream, { name: filename })
+    const { stream, socket } = this.$nuxtSocket({ 
+      channel: '/stream', 
+      socketStream: '~~sampleImage' 
+    })
+    socket.emit('hello', { data: 123 }, (resp) => {
+      console.log('hello resp rxd!', resp)
+    })
     stream
       .on('data', (d) => {
         imageBytes = [...imageBytes, ...d]

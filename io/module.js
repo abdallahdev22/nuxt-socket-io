@@ -102,7 +102,15 @@ const register = {
     consola.info('socket.io client connected to ', namespace)
     Object.entries(svc).forEach(([evt, fn]) => {
       if (typeof fn === 'function') {
-        socket.on(evt, async (msg, cb = () => {}) => {
+        let useSocket 
+        if (!evt.startsWith('~~')) {
+          useSocket = socket
+        } else {
+          const ss = require('socket.io-stream')
+          useSocket = ss(socket)
+        }
+
+        useSocket.on(evt, async (msg, cb = () => {}) => {
           try {
             const resp = await fn(msg)
             cb(resp)
