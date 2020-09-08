@@ -39,6 +39,7 @@ const register = {
       const namespaces = nspFiles.map(
         (f) => f.split(nspDirResolved)[1].split(/.(js|ts|mjs)/)[0]
       )
+      
       namespaces.forEach(async (namespace, idx) => {
         const { default: Svc } = await import(nspFiles[idx])
         if (Svc && typeof Svc === 'function') {
@@ -60,7 +61,7 @@ const register = {
       server
         .listen(port, host)
         .on('error', reject)
-        .on('listening', () => {
+        .once('listening', () => {
           consola.info(`socket.io server listening on ${host}:${port}`)
           resolve(server)
         })

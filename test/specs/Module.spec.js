@@ -1,3 +1,4 @@
+import { statSync } from 'fs'
 import http from 'http'
 import path from 'path'
 import consola from 'consola'
@@ -147,6 +148,31 @@ test('Register.server: server already listening', async (t) => {
   t.truthy(serverIn)
   t.true(serverIn.listening)
   serverIn.close()
+})
+
+test('Register.nspSvc (nsp contains socketStream)', async (t) => {
+  await register.server({}, serverDflt)
+  
+  const ss = require('socket.io-stream')
+  const stream = ss.createStream()
+  const socket = ioClient(`http://localhost:3000/stream`)
+
+
+  const streamSocket = ss(socket)
+  streamSocket.emit('~~sampleImage', { stream,  data: 'abc123' })
+  
+  return new Promise((resolve) => {
+    let buf = []
+    stream
+      .on('data', (d) => buf = [...buf, ...d ])
+      .on('end', () => {
+        const { size } = statSync('./server/sample.jpg')
+        t.is(size, buf.length)
+        socket.close()
+        serverDflt.close()
+        resolve()
+      })
+  })
 })
 
 test('Register.ioSvc (ioSvc does not exist)', async (t) => {

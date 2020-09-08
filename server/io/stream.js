@@ -3,12 +3,11 @@ import { createReadStream } from 'fs'
 
 export default function(socket, io) {
   return {
-    '~~sampleImage'(stream, data) {
+    '~~sampleImage'({ stream, data }) {
       const filename = pResolve('./server/sample.jpg')
       createReadStream(filename).pipe(stream)
     },
     'hello'(msg) {
-      console.log('hello rxd!', msg)
       return 'hello from server!'
     }
   }
