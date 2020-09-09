@@ -3,7 +3,7 @@ export default {
   require: ['@babel/register', './test/specs.setup.js'],
   serial: true,
   files: [
-    'test/specs/Module.spec.js',
+    // 'test/specs/Module.spec.js',
     'test/specs/Plugin.spec.js'
   ],
   ignoredByWatcher: ['io/plugin.compiled.js'],

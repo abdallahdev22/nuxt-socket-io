@@ -20,6 +20,7 @@ cache:
 test_unit:
   script:
     - npm install
+    - npm install socket.io-stream
     - npm test
   coverage: '/All files[^|]*\|[^|]*\s+([\d\.]+)/'
   artifacts:

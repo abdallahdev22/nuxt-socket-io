@@ -995,14 +995,17 @@ function nuxtSocket(ioOpts) {
   }
   _pOptions.set({ sockets })
 
-  if (socketStream 
-   && typeof socketStream === 'string'
-   && socketStream.startsWith('~~')) {
+  if (socketStream) {
     const ss = require('socket.io-stream')
+    const { evt, ...data } = socketStream
     const stream = ss.createStream()
     const streamSocket = ss(socket)
-    streamSocket.emit(socketStream, stream)
-    return { stream, socket, streamSocket }
+    if (evt  
+     && typeof evt === 'string'
+     && evt.startsWith('~~')) {
+      streamSocket.emit(evt, { stream, data })      
+    }
+    return { stream, socket, streamSocket, ss }
   } else {
     return socket
   }
