@@ -1,10 +1,6 @@
 <template>
   <div>
     <div>
-      <label>Your Screen:</label>
-      <input type="number" v-model.number="recordPeriod"> Record Period </input>
-    </div>
-    <div>
       <button class="btn btn-primary" @click="startCapture()">Start</button>
       <button class="btn btn-primary" @click="stopCapture()">Stop</button> 
     </div>
@@ -34,8 +30,11 @@ export default {
         },
         audio: false
       },
+      recordingOptions: {
+        mimeType: "video/webm; codecs=vp9",
+        period: 3000
+      },
       video: '',
-      recordPeriod: 3000,
       imageData: ''
     }
   },  
@@ -70,7 +69,6 @@ export default {
       try {
         const { displayMediaOptions, video } = this
         const captureStream = await navigator.mediaDevices.getDisplayMedia(displayMediaOptions);
-        console.log('video is', video)
         video.srcObject = captureStream
         this.startRecording(captureStream)
       } catch(err) {
@@ -78,17 +76,18 @@ export default {
       }
     },
     startRecording(captureStream) {
-      const { recordPeriod, socket } = this
-      const options = { mimeType: "video/webm; codecs=vp9" }
-      const mediaRecorder = new MediaRecorder(captureStream, options)
+      const { recordingOptions, socket } = this
+      const { mimeType, period } = recordingOptions
+      const mediaRecorder = new MediaRecorder(captureStream, { mimeType })
       mediaRecorder.ondataavailable = async function(event) {
         const buf = await event.data.arrayBuffer()
+        console.log('emit buf', buf.byteLength)
         socket.emit('chunk', buf)
       }
 
       const timer = setInterval(() => {
         mediaRecorder.requestData()
-      }, recordPeriod)
+      }, period)
 
       mediaRecorder.onstop = function() {
         clearInterval(timer)
@@ -96,9 +95,8 @@ export default {
       mediaRecorder.start();
     },
     stopCapture() {
-      const video = document.getElementById('video')
+      const { video } = this
       let tracks = video.srcObject.getTracks();
-
       tracks.forEach(track => track.stop());
       video.srcObject = null;
     }
