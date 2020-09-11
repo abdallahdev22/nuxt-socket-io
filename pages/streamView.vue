@@ -2,48 +2,65 @@
   <div>
     <div>
       <label>Presenter's screen:</label>
-      <input type="checkbox" v-model="showVideo"> Show Screen</input>
+      <input v-model="showVideo" type="checkbox"> Show Screen</input>
     </div>
-    <video v-if="showVideo" v-show-video id="video" type="video/webm" autoplay />
+    <video id="video" v-if="showVideo" v-show-video type="video/webm" autoplay />
 
   </div>
 </template>
 
 <script>
-function stream(video, mimeCodec, cb) {
-  if ('MediaSource' in window && MediaSource.isTypeSupported(mimeCodec)) {
-    const mediaSource = new MediaSource;
-    video.src = URL.createObjectURL(mediaSource);
-    mediaSource.addEventListener('sourceopen', function() {
-      console.log('source open', mediaSource)
-      var sourceBuffer = mediaSource.addSourceBuffer(mimeCodec);
-      // sourceBuffer.addEventListener('updateend', function (_) {
-      //   console.log('end of stream!')
-      //   mediaSource.endOfStream();
-      // })
-      // video.play()
-      cb(sourceBuffer)
-    })
-  } else {
-    console.error('Unsupported MIME type or codec: ', mimeCodec);
-  }
+function initVideo(video, mimeCodec, cb) {
+  return new Promise((resolve, reject) => {
+    if ('MediaSource' in window 
+      && MediaSource.isTypeSupported(mimeCodec)) {
+      const mediaSource = new MediaSource;
+      video.src = URL.createObjectURL(mediaSource);
+      mediaSource.addEventListener('sourceopen', function() {
+        const sourceBuffer = mediaSource.addSourceBuffer(mimeCodec);
+        resolve({ sourceBuffer, mediaSource })
+      })
+    } else {
+      reject(new Error(`Unsupported MIME type or codec: ${mimeCodec}`))
+    }
+  })
 }
 
 export default {
   directives: {
     showVideo: {
-      inserted(elm, binding, { context }) {
+      async inserted(elm, binding, { context }) {
         const { streamInfo } = context
         const { mimeCodec } = streamInfo
         const video = elm
-        stream(video, mimeCodec, (sourceBuffer) => {
-          context.socket.on('chunk', (bufIn) => {
-            console.log('buf rxd', bufIn.byteLength)
-            if (!sourceBuffer.updating) {
-              sourceBuffer.appendBuffer(bufIn);
+        // eslint-disable-next-line handle-callback-err
+        video.addEventListener('error', (error) => {
+          /* Error because stream is changing */
+        })
+        const socket = context.$nuxtSocket({ 
+          channel: '/stream'
+        })
+        let { sourceBuffer, mediaSource } = await initVideo(video, mimeCodec)
+        socket
+          .on('chunk', (bufIn) => {
+            if (sourceBuffer && !sourceBuffer.updating) {
+              sourceBuffer.appendBuffer(bufIn)
             }
           })
-        })
+          .on('start', async () => {
+            if (sourceBuffer) return
+            const info = await initVideo(video, mimeCodec)
+            sourceBuffer = info.sourceBuffer
+            mediaSource = info.mediaSource
+          })
+          .on('stop', () => {
+            function endOfStream() {
+              mediaSource.endOfStream();
+              sourceBuffer.removeEventListener('updateend', endOfStream, true)
+              sourceBuffer = false
+            }
+            sourceBuffer.addEventListener('updateend', endOfStream)
+          })
       }
     }
   },
@@ -52,14 +69,9 @@ export default {
       showVideo: false,
       streamInfo: {
         mimeCodec: "video/webm; codecs=vp9"
-      },
+      }
     }
-  },
-  mounted() {
-    this.socket = this.$nuxtSocket({ 
-      channel: '/stream'
-    })
-  }  
+  }
 }
 </script>
 
