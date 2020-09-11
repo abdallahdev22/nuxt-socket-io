@@ -32,7 +32,7 @@ export default {
       },
       recordingOptions: {
         mimeType: "video/webm; codecs=vp9",
-        period: 3000
+        period: 100
       },
       video: '',
       imageData: ''
@@ -81,7 +81,6 @@ export default {
       const mediaRecorder = new MediaRecorder(captureStream, { mimeType })
       mediaRecorder.ondataavailable = async function(event) {
         const buf = await event.data.arrayBuffer()
-        console.log('emit buf', buf.byteLength)
         socket.emit('chunk', buf)
       }
 
