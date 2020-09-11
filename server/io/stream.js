@@ -1,4 +1,3 @@
-import http from 'http'
 import { resolve as pResolve } from 'path'
 import { createReadStream } from 'fs'
 
