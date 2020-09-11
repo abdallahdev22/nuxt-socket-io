@@ -13,6 +13,9 @@ export default function(socket, io) {
     },
     'dataURI'({ uri, t }) {
       socket.broadcast.emit('dataURI', { uri, t })
-    }
+    },
+    chunk(buf) {
+      socket.broadcast.emit('chunk', buf)
+    } 
   }
 }
