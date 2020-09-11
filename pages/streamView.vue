@@ -29,10 +29,11 @@ function initVideo(video, mimeCodec, cb) {
 export default {
   directives: {
     showVideo: {
-      async inserted(elm, binding, { context }) {
+      inserted(elm, binding, { context }) {
         const { streamInfo } = context
         const { mimeCodec } = streamInfo
         const video = elm
+        const info = {}
         // eslint-disable-next-line handle-callback-err
         video.addEventListener('error', (error) => {
           /* Error because stream is changing */
@@ -40,26 +41,24 @@ export default {
         const socket = context.$nuxtSocket({ 
           channel: '/stream'
         })
-        let { sourceBuffer, mediaSource } = await initVideo(video, mimeCodec)
+        async function updateInfo() {
+          Object.assign(info, await initVideo(video, mimeCodec))
+        }
+        updateInfo()
         socket
           .on('chunk', (bufIn) => {
-            if (sourceBuffer && !sourceBuffer.updating) {
-              sourceBuffer.appendBuffer(bufIn)
+            if (info.sourceBuffer && !info.sourceBuffer.updating) {
+              info.sourceBuffer.appendBuffer(bufIn)
             }
           })
-          .on('start', async () => {
-            if (sourceBuffer) return
-            const info = await initVideo(video, mimeCodec)
-            sourceBuffer = info.sourceBuffer
-            mediaSource = info.mediaSource
-          })
+          .on('start', updateInfo)
           .on('stop', () => {
             function endOfStream() {
-              mediaSource.endOfStream();
-              sourceBuffer.removeEventListener('updateend', endOfStream, true)
-              sourceBuffer = false
+              info.mediaSource.endOfStream();
+              info.sourceBuffer.removeEventListener('updateend', endOfStream, true)
+              info.sourceBuffer = false
             }
-            sourceBuffer.addEventListener('updateend', endOfStream)
+            info.sourceBuffer.addEventListener('updateend', endOfStream)
           })
       }
     }
