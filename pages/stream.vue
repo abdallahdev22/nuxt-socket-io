@@ -1,14 +1,14 @@
 <template>
   <div>
     <div>
-      <button class="btn btn-primary" @click="startCapture()">Start</button>
-      <button class="btn btn-primary" @click="stopCapture()">Stop</button>
+      <label>Your Screen:</label>
+      <input type="number" v-model.number="recordPeriod"> Record Period </input>
     </div>
-    <video id="video" autoplay />
-
-    Streamed:
-    <video id="video2" autoplay />
-    <!-- <video id="video2" autoplay /> -->
+    <div>
+      <button class="btn btn-primary" @click="startCapture()">Start</button>
+      <button class="btn btn-primary" @click="stopCapture()">Stop</button> 
+    </div>
+    <video id="video" v-screen-view autoplay />
 
     Ready to receive image!
     <button class="btn btn-primary" @click="getImage()">Get Sample Image</button>
@@ -17,48 +17,25 @@
 </template>
 
 <script>
-
-function stream(mimeCodec, cb) {
-  const video = document.getElementById('video2')
-  console.log('stream', mimeCodec)
-  if ('MediaSource' in window && MediaSource.isTypeSupported(mimeCodec)) {
-    var mediaSource = new MediaSource;
-    //console.log(mediaSource.readyState); // closed
-    var url = URL.createObjectURL(mediaSource)
-    // video.src = URL.createObjectURL(mediaSource);
-    console.log('src now!', url)
-    // mediaSource.addEventListener('sourceopen', function() {
-      // console.log('source open')
-      var sourceBuffer = mediaSource.addSourceBuffer(mimeCodec);
-      // sourceBuffer.addEventListener('updateend', function (_) {
-      //   mediaSource.endOfStream();
-      // })
-      cb(url, sourceBuffer)
-    // })
-    // mediaSource.addEventListener('sourceopen', sourceOpen);
-  } else {
-    console.error('Unsupported MIME type or codec: ', mimeCodec);
-  }
-}
-
-// function sourceOpen (_) {
-//   console.log('ready state', this.readyState); // open
-//   var mediaSource = this;
-//   var sourceBuffer = mediaSource.addSourceBuffer(mimeCodec);
-//   fetchAB(assetURL, function (buf) {
-//     sourceBuffer.addEventListener('updateend', function (_) {
-//       mediaSource.endOfStream();
-//       video.play();
-//       console.log(mediaSource.readyState); // ended
-//     });
-//     sourceBuffer.appendBuffer(buf);
-//   });
-// }
-
-
 export default {
+  directives: {
+    screenView: {
+      inserted(elm, binding, { context }) {
+        context.video = elm
+        console.log('video elm set', context.video)
+      }
+    }
+  },
   data() {
     return {
+      displayMediaOptions: {
+        video: {
+          cursor: "always"
+        },
+        audio: false
+      },
+      video: '',
+      recordPeriod: 3000,
       imageData: ''
     }
   },  
@@ -90,16 +67,10 @@ export default {
         })
     },
     async startCapture() {
-      const video = document.getElementById('video')
-      const displayMediaOptions = {
-        video: {
-          cursor: "always"
-        },
-        audio: false
-      }
-      
       try {
+        const { displayMediaOptions, video } = this
         const captureStream = await navigator.mediaDevices.getDisplayMedia(displayMediaOptions);
+        console.log('video is', video)
         video.srcObject = captureStream
         this.startRecording(captureStream)
       } catch(err) {
@@ -107,48 +78,17 @@ export default {
       }
     },
     startRecording(captureStream) {
-      const { socket } = this
+      const { recordPeriod, socket } = this
       const options = { mimeType: "video/webm; codecs=vp9" }
-      let _sourceBuffer
-
-      // stream(options.mimeType, (uri, sourceBuffer) => {
-      //   _sourceBuffer = sourceBuffer
-      //   console.log('EMIT dataURI', uri, sourceBuffer)
-      //   socket.emit('dataURI', { uri })
-      // })
-
       const mediaRecorder = new MediaRecorder(captureStream, options)
-      const video2 = document.getElementById('video2')
-      const recordedChunks = []
-      let t = 0
-
       mediaRecorder.ondataavailable = async function(event) {
-        // if (_sourceBuffer) {
-        //   // console.log('buffer...', _sourceBuffer)
-          const buf = await event.data.arrayBuffer()
-          socket.emit('chunk', buf)
-        //   console.log('append buf', buf)
-        //   _sourceBuffer.appendBuffer(buf);
-        // }
-        // return
-
-
-        const chunk = event.data
-        if (chunk.size > 0) {
-          recordedChunks.push(chunk)
-          const blob = new Blob(recordedChunks, {
-            type: "video/webm"
-          });
-
-          // const uri = URL.createObjectURL(blob);
-          // socket.emit('dataURI', { uri, t })
-          // t++
-        }
+        const buf = await event.data.arrayBuffer()
+        socket.emit('chunk', buf)
       }
 
       const timer = setInterval(() => {
         mediaRecorder.requestData()
-      }, 3000)
+      }, recordPeriod)
 
       mediaRecorder.onstop = function() {
         clearInterval(timer)
