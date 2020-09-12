@@ -33,7 +33,7 @@ export default {
       },
       recordingOptions: {
         mimeType: 'video/webm; codecs=vp9',
-        period: 100
+        period: 1000
       },
       video: '',
       imageData: ''

@@ -4,7 +4,7 @@
       <label>Presenter's screen:</label>
       <input v-model="showVideo" type="checkbox"> Show Screen</input>
     </div>
-    <video id="video" v-if="showVideo" v-show-video type="video/webm" autoplay />
+    <video id="video" v-if="showVideo" v-show-video autoplay />
 
   </div>
 </template>
@@ -48,7 +48,12 @@ export default {
         socket
           .on('chunk', (bufIn) => {
             if (info.sourceBuffer && !info.sourceBuffer.updating) {
-              info.sourceBuffer.appendBuffer(bufIn)
+              try { 
+                info.sourceBuffer.appendBuffer(bufIn)
+              } catch(e) {
+                console.log( 'err appending. try re-init')
+                updateInfo()
+              }
             }
           })
           .on('start', updateInfo)
@@ -56,9 +61,9 @@ export default {
             function endOfStream() {
               info.mediaSource.endOfStream();
               info.sourceBuffer.removeEventListener('updateend', endOfStream, true)
-              info.sourceBuffer = false
+              // info.sourceBuffer = false
             }
-            info.sourceBuffer.addEventListener('updateend', endOfStream)
+            // info.sourceBuffer.addEventListener('updateend', endOfStream)
           })
       }
     }
