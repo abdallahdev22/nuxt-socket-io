@@ -1,6 +1,10 @@
 <template>
   <div>
     <div>
+      <label>Recording Period</label>
+      <input v-model.number="recordingOptions.period" type="number" />
+    </div>
+    <div>
       <button @click="startCapture()" class="btn btn-primary">Start</button>
       <button @click="stopCapture()" class="btn btn-primary">Stop</button>
     </div>
@@ -15,6 +19,8 @@
 </template>
 
 <script>
+const delay = async (ms) => new Promise((resolve) => setTimeout(resolve, ms))
+
 export default {
   directives: {
     screenView: {
@@ -97,7 +103,9 @@ export default {
       socket.emit('start')
 
       const timer = setInterval(() => {
+        // mediaRecorder.pause()
         mediaRecorder.requestData()
+        // mediaRecorder.resume()
       }, period)
     },
     stopCapture() {

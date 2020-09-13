@@ -10,6 +10,8 @@
 </template>
 
 <script>
+const delay = async (ms) => new Promise((resolve) => setTimeout(resolve, ms))
+
 function initVideo(video, mimeCodec, cb) {
   return new Promise((resolve, reject) => {
     if ('MediaSource' in window 
@@ -34,37 +36,52 @@ export default {
         const { mimeCodec } = streamInfo
         const video = elm
         const info = {}
-        // eslint-disable-next-line handle-callback-err
-        video.addEventListener('error', (error) => {
-          /* Error because stream is changing */
-        })
+        
         const socket = context.$nuxtSocket({ 
           channel: '/stream'
         })
-        async function updateInfo() {
+
+        function stop() {
+          return new Promise(async (resolve) => {
+            function endOfStream() {
+              if (info.mediaSource.readyState === 'open') {
+                info.mediaSource.endOfStream();
+              }
+              info.sourceBuffer.removeEventListener('updateend', endOfStream, true)
+              resolve()
+            }
+            info.sourceBuffer.addEventListener('updateend', endOfStream)
+            await delay(1000)
+            endOfStream()
+          })
+        }
+        async function start() {
           Object.assign(info, await initVideo(video, mimeCodec))
         }
-        updateInfo()
+        video.onerror = async (evt) => {
+          console.error('video elm error', evt.target.error)
+          await stop()
+          await delay(1000)
+          await start()
+          console.log('retry....')
+        }
         socket
           .on('chunk', (bufIn) => {
-            if (info.sourceBuffer && !info.sourceBuffer.updating) {
-              try { 
-                info.sourceBuffer.appendBuffer(bufIn)
-              } catch(e) {
-                console.log( 'err appending. try re-init')
-                updateInfo()
+            console.log('bufIn', bufIn.byteLength)
+            if (!video.error 
+              && info.mediaSource.readyState === 'open' 
+              && info.sourceBuffer 
+              && !info.sourceBuffer.updating) {
+              info.sourceBuffer.appendBuffer(bufIn)
+              if (info.sourceBuffer.buffered.length > 0) {
+                console.log('sourceBuffer', info.sourceBuffer.buffered.end(0))
               }
             }
           })
-          .on('start', updateInfo)
-          .on('stop', () => {
-            function endOfStream() {
-              info.mediaSource.endOfStream();
-              info.sourceBuffer.removeEventListener('updateend', endOfStream, true)
-              // info.sourceBuffer = false
-            }
-            // info.sourceBuffer.addEventListener('updateend', endOfStream)
-          })
+          .on('start', start)
+          .on('stop', stop)
+
+        start()
       }
     }
   },
